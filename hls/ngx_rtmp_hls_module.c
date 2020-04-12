@@ -854,7 +854,6 @@ ngx_rtmp_hls_get_fragment_id(ngx_rtmp_session_t *s, uint64_t ts)
 static ngx_str_t *
 ngx_rtmp_hls_get_fragment_datetime(ngx_rtmp_session_t *s, uint64_t ts)
 {
-    ngx_rtmp_hls_ctx_t         *ctx;
     ngx_rtmp_hls_app_conf_t    *hacf;
     ngx_str_t                  *datetime;
     ngx_tm_t                    tm;
@@ -864,7 +863,6 @@ ngx_rtmp_hls_get_fragment_datetime(ngx_rtmp_session_t *s, uint64_t ts)
     datetime->data = NULL;
     datetime->len = 0;
 
-    ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_hls_module);
     hacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_hls_module);
 
     switch (hacf->datetime) {
@@ -888,8 +886,14 @@ ngx_rtmp_hls_get_fragment_datetime(ngx_rtmp_session_t *s, uint64_t ts)
         return datetime;
 
     case NGX_RTMP_HLS_DATETIME_SYSTEM:
+        msec = ngx_cached_time->sec * 1000 + ngx_cached_time->msec;
+        ngx_gmtime(msec / 1000, &tm);
+
         datetime->data = (u_char *) ngx_pcalloc(s->connection->pool, ngx_cached_http_log_iso8601.len * sizeof(u_char));
-        ngx_cpymem(&datetime->data, (const void *) &ngx_cached_http_log_iso8601.data, ngx_cached_http_log_iso8601.len);
+        (void) ngx_sprintf(datetime->data, "%4d-%02d-%02dT%02d:%02d:%02d-00:00",
+                           tm.ngx_tm_year, tm.ngx_tm_mon,
+			   tm.ngx_tm_mday, tm.ngx_tm_hour,
+                           tm.ngx_tm_min, tm.ngx_tm_sec);
         datetime->len = ngx_cached_http_log_iso8601.len;
         return datetime;
 
